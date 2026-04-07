@@ -333,7 +333,7 @@
                 class="bg-gradient-to-r from-cyan-600/80 to-purple-600/80 p-4 flex justify-between items-center backdrop-blur-md">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">✨</span>
-                    <h3 class="font-bold text-white shadow-sm">AI Asisten Ardi</h3>
+                    <h3 class="font-bold text-white shadow-sm">Asisten Pribadi Ardi</h3>
                 </div>
                 <button id="close-chat-btn" class="text-white hover:text-gray-200 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -459,22 +459,32 @@ Jawab secara ringkas, padat, dan langsung menjawab inti pertanyaan pengunjung. J
             chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll ke bawah
         }
 
-        // Memanggil Gemini API dengan Exponential Backoff (Mencegah Error Timeout)
-        async function fetchGeminiAPI(userQuery, retries = 5) {
-            // PERHATIAN: Masukkan API Key dari Google AI Studio di bawah ini
-            // Web browser tidak bisa membaca variabel environment secara otomatis tanpa bundler
-            const apiKey = "AIzaSyBnZ0clcSR2ggbrsMn8vOvVbLMAb7J6Wjg"; // <--- GANTI STRING KOSONG INI DENGAN API KEY ANDA
+      // Memanggil Backend Vercel Anda (Tanpa API Key, Sangat Aman!)
+        async function fetchGeminiAPI(userQuery, retries = 3) {
+            const backendUrl = '/api/chat'; 
 
-            if (!apiKey || apiKey === "") {
-                return "Koneksi gagal: API Key belum diatur. Silakan masukkan API Key Gemini Anda di dalam file index.html (cari 'apiKey').";
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(backendUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: userQuery }) 
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data.reply || "Maaf, AI sedang error. 😵‍💫"; 
+
+                } catch (error) {
+                    console.error("Fetch Error:", error);
+                    if (i === retries - 1) return "Duh, koneksi AI terputus. Coba lagi sebentar lagi ya! 😅";
+                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i))); 
+                }
             }
-
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
+        }
 
             for (let i = 0; i < retries; i++) {
                 try {
